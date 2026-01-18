@@ -4,7 +4,6 @@ let allFissures = [];
 
 const tierOrder = ["Lith", "Meso", "Neo", "Axi", "Requiem", "Omnia"];
 
-
 function formatTime(ms) {
   const totalSeconds = Math.floor(ms / 1000);
   const h = Math.floor(totalSeconds / 3600);
@@ -41,11 +40,13 @@ function getFactionIcon(enemy) {
   return "";
 }
 
+// API quirk fix
 function normalizeMissionType(type) {
   if (!type) return "";
   if (type.toLowerCase() === "corruption") return "Void Flood";
   return type;
 }
+
 
 function createMissionRow(f, listContainer, card) {
   const row = document.createElement("div");
@@ -141,6 +142,25 @@ function renderFissures(filter) {
   });
 }
 
+function refreshFissures() {
+  fetch(API_URL)
+    .then(r => r.json())
+    .then(data => {
+      allFissures = data
+        .filter(f => new Date(f.expiry).getTime() > Date.now())
+        .filter(f => !f.isStorm); //removes void storms
+
+      if (document.getElementById("hardBtn").classList.contains("active")) {
+        renderFissures("hard");
+      } else if (document.getElementById("normalBtn").classList.contains("active")) {
+        renderFissures("normal");
+      } else {
+        renderFissures("all");
+      }
+    })
+    .catch(console.error);
+}
+
 function setActive(id) {
   document.querySelectorAll(".toggle button").forEach(b =>
     b.classList.remove("active")
@@ -164,15 +184,6 @@ document.addEventListener("DOMContentLoaded", () => {
     renderFissures("hard");
   };
 
-  fetch(API_URL)
-    .then(r => r.json())
-    .then(data => {
-      allFissures = data
-        .filter(f => new Date(f.expiry).getTime() > Date.now())
-        .filter(f => !f.isStorm); //remove to include void storms
-
-      renderFissures("all");
-    })
-    .catch(console.error);
+  refreshFissures();                   
+  setInterval(refreshFissures, 40000); 
 });
-
