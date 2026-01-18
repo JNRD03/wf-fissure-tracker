@@ -1,0 +1,102 @@
+body {
+  background: #0b0b0b;
+  color: #fff;
+  font-family: Arial, sans-serif;
+  margin: 0;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 15px;
+  border-bottom: 1px solid #333;
+}
+
+.wf-logo {
+  width: 36px;
+  height: 36px;
+}
+
+.container {
+  width: 90%;
+  max-width: 900px;
+  margin: 20px auto;
+}
+
+.toggle {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.toggle button {
+  background: #1b1b1b;
+  border: 1px solid #444;
+  color: #fff;
+  padding: 8px 16px;
+  cursor: pointer;
+  border-radius: 5px;
+}
+
+.toggle button.active {
+  background: #3a3a3a;
+}
+
+.group {
+  margin-bottom: 15px;
+}
+
+.group-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 20px;
+  margin-bottom: 10px;
+}
+
+.group-title img {
+  width: 28px;
+  height: 28px;
+}
+
+.card {
+  background: #1b1b1b;
+  border: 1px solid #444;
+  border-radius: 8px;
+  padding: 10px;
+}
+
+.card-inner {
+  display: flex;
+  align-items: center; /* centered tier icon */
+  gap: 15px;
+}
+
+.big-icon {
+  width: 50px;
+  height: 50px;
+}
+
+.mission-list {
+  flex: 1;
+}
+
+.mission {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 0;
+}
+
+.mission .sp-icon,
+.mission .faction-icon {
+  width: 20px;
+  height: 20px;
+}
+
+.mission .timer {
+  margin-left: auto;
+}
