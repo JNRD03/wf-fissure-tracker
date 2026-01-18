@@ -1,189 +1,155 @@
 const API_URL = "https://api.warframestat.us/pc/fissures";
-
-let allFissures = [];
-
 const tierOrder = ["Lith", "Meso", "Neo", "Axi", "Requiem", "Omnia"];
 
-function formatTime(ms) {
-  const totalSeconds = Math.floor(ms / 1000);
-  const h = Math.floor(totalSeconds / 3600);
-  const m = Math.floor((totalSeconds % 3600) / 60);
-  const s = totalSeconds % 60;
+let fissureMap = new Map();
+let currentFilter = "all";
 
-  return `${h.toString().padStart(2, "0")}:${m
-    .toString()
-    .padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
+/* ---------- helpers ---------- */
+
+function formatTime(ms) {
+  const s = Math.floor(ms / 1000);
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const sec = s % 60;
+  return `${h.toString().padStart(2,"0")}:${m.toString().padStart(2,"0")}:${sec.toString().padStart(2,"0")}`;
 }
 
-function getTierIcon(tier) {
+function tierIcon(tier) {
   return `images/${tier.toLowerCase()}.png`;
 }
 
-function getSpIcon(isHard) {
-  return isHard ? "images/sp.png" : "images/nonsp.png";
+function spIcon(isHard) {
+  return isHard ? "images/sp.png" : "images/nonSp.png";
 }
 
-function getFactionIcon(enemy) {
-  if (!enemy) return "";
-
+function factionIcon(enemy) {
+  if (!enemy) return "images/orokin.png";
   const e = enemy.toLowerCase();
-
   if (e.includes("grineer")) return "images/grineer.png";
   if (e.includes("corpus")) return "images/corpus.png";
   if (e.includes("infested")) return "images/infested.png";
   if (e.includes("crossfire")) return "images/cf.png";
   if (e.includes("murmur")) return "images/murmur.png";
-  if (e.includes("orokin") || e.includes("void") || e.includes("corruption")) {
-    return "images/orokin.png";
-  }
-
-  return "";
+  return "images/orokin.png";
 }
 
-// API quirk fix
-function normalizeMissionType(type) {
-  if (!type) return "";
-  if (type.toLowerCase() === "corruption") return "Void Flood";
-  return type;
+function normalizeMission(type) {
+  return type?.toLowerCase() === "corruption" ? "Void Flood" : type;
 }
 
+/* ---------- layout ---------- */
 
-function createMissionRow(f, listContainer, card) {
+function getTierGroup(tier) {
+  let el = document.getElementById(`tier-${tier}`);
+  if (el) return el;
+
+  el = document.createElement("div");
+  el.className = "tier-group";
+  el.id = `tier-${tier}`;
+  document.getElementById("fissureList").appendChild(el);
+  return el;
+}
+
+function getCard(tier, isHard) {
+  const group = getTierGroup(tier);
+  const id = `${tier}-${isHard ? "sp" : "normal"}`;
+
+  let card = document.getElementById(id);
+  if (card) return card.querySelector(".mission-list");
+
+  card = document.createElement("div");
+  card.className = "card";
+  card.id = id;
+
+  card.innerHTML = `
+    <div class="card-inner">
+      <img class="big-icon" src="${tierIcon(tier)}">
+      <div class="mission-list"></div>
+    </div>
+  `;
+
+  group.appendChild(card);
+  return card.querySelector(".mission-list");
+}
+
+/* ---------- missions ---------- */
+
+function addMission(f) {
+  if (fissureMap.has(f.id)) return;
+
+  if (currentFilter === "normal" && f.isHard) return;
+  if (currentFilter === "hard" && !f.isHard) return;
+
+  const list = getCard(f.tier, f.isHard);
+
   const row = document.createElement("div");
   row.className = "mission";
 
-  const spIcon = document.createElement("img");
-  spIcon.className = "sp-icon";
-  spIcon.src = getSpIcon(f.isHard);
+  row.innerHTML = `
+    <img class="sp-icon" src="${spIcon(f.isHard)}">
+    <img class="faction-icon" src="${factionIcon(f.enemy)}">
+    <span class="mission-text">${normalizeMission(f.missionType)} - ${f.node}</span>
+    <span class="timer"></span>
+  `;
 
-  const factionIcon = document.createElement("img");
-  factionIcon.className = "faction-icon";
-  factionIcon.src = getFactionIcon(f.enemy);
-
-  const text = document.createElement("span");
-  text.className = "mission-text";
-  text.textContent = `${normalizeMissionType(f.missionType)} - ${f.node}`;
-
-  const timer = document.createElement("span");
-  timer.className = "timer";
-
-  row.appendChild(spIcon);
-  row.appendChild(factionIcon);
-  row.appendChild(text);
-  row.appendChild(timer);
-  listContainer.appendChild(row);
+  const timerEl = row.querySelector(".timer");
 
   const interval = setInterval(() => {
     const diff = new Date(f.expiry) - Date.now();
-
-    if (diff <= 0) {
-      clearInterval(interval);
-      row.remove();
-
-      if (!listContainer.children.length) {
-        card.remove();
-      }
-    } else {
-      timer.textContent = formatTime(diff);
-    }
+    if (diff <= 0) removeMission(f.id);
+    else timerEl.textContent = formatTime(diff);
   }, 1000);
+
+  list.appendChild(row);
+  fissureMap.set(f.id, { row, interval });
 }
 
-function createCard(tier, fissures) {
-  const card = document.createElement("div");
-  card.className = "card";
-
-  const inner = document.createElement("div");
-  inner.className = "card-inner";
-
-  const icon = document.createElement("img");
-  icon.className = "big-icon";
-  icon.src = getTierIcon(tier);
-
-  const missionList = document.createElement("div");
-  missionList.className = "mission-list";
-
-  fissures
-    .sort((a, b) => new Date(a.expiry) - new Date(b.expiry))
-    .forEach(f => createMissionRow(f, missionList, card));
-
-  inner.appendChild(icon);
-  inner.appendChild(missionList);
-  card.appendChild(inner);
-
-  return card;
+function removeMission(id) {
+  const entry = fissureMap.get(id);
+  if (!entry) return;
+  clearInterval(entry.interval);
+  entry.row.remove();
+  fissureMap.delete(id);
 }
 
-function renderFissures(filter) {
-  const root = document.getElementById("fissureList");
-  root.innerHTML = "";
+/* ---------- refresh ---------- */
 
-  tierOrder.forEach(tier => {
-    const tierFissures = allFissures.filter(f => f.tier === tier);
-    if (!tierFissures.length) return;
-
-    const normal = tierFissures.filter(f => f.isHard !== true);
-    const hard = tierFissures.filter(f => f.isHard === true);
-
-    const group = document.createElement("div");
-    group.className = "group";
-
-    if ((filter === "all" || filter === "normal") && normal.length) {
-      group.appendChild(createCard(tier, normal));
-    }
-
-    if ((filter === "all" || filter === "hard") && hard.length) {
-      group.appendChild(createCard(tier, hard));
-    }
-
-    if (group.children.length) {
-      root.appendChild(group);
-    }
-  });
-}
-
-function refreshFissures() {
+function refresh() {
   fetch(API_URL)
     .then(r => r.json())
     .then(data => {
-      allFissures = data
-        .filter(f => new Date(f.expiry).getTime() > Date.now())
-        .filter(f => !f.isStorm); //removes void storms
+      const active = data
+        .filter(f => !f.isStorm)
+        .filter(f => new Date(f.expiry) > Date.now());
 
-      if (document.getElementById("hardBtn").classList.contains("active")) {
-        renderFissures("hard");
-      } else if (document.getElementById("normalBtn").classList.contains("active")) {
-        renderFissures("normal");
-      } else {
-        renderFissures("all");
-      }
-    })
-    .catch(console.error);
+      const ids = new Set(active.map(f => f.id));
+      [...fissureMap.keys()].forEach(id => {
+        if (!ids.has(id)) removeMission(id);
+      });
+
+      tierOrder.forEach(tier => {
+        active.filter(f => f.tier === tier).forEach(addMission);
+      });
+    });
 }
 
-function setActive(id) {
-  document.querySelectorAll(".toggle button").forEach(b =>
-    b.classList.remove("active")
-  );
-  document.getElementById(id).classList.add("active");
+/* ---------- controls ---------- */
+
+function setFilter(btn, filter) {
+  currentFilter = filter;
+  document.querySelectorAll(".toggle button").forEach(b => b.classList.remove("active"));
+  btn.classList.add("active");
+
+  document.getElementById("fissureList").innerHTML = "";
+  fissureMap.forEach(v => clearInterval(v.interval));
+  fissureMap.clear();
+
+  refresh();
 }
 
-document.addEventListener("DOMContentLoaded", () => {
-  allBtn.onclick = () => {
-    setActive("allBtn");
-    renderFissures("all");
-  };
+allBtn.onclick = () => setFilter(allBtn, "all");
+normalBtn.onclick = () => setFilter(normalBtn, "normal");
+hardBtn.onclick = () => setFilter(hardBtn, "hard");
 
-  normalBtn.onclick = () => {
-    setActive("normalBtn");
-    renderFissures("normal");
-  };
-
-  hardBtn.onclick = () => {
-    setActive("hardBtn");
-    renderFissures("hard");
-  };
-
-  refreshFissures();                   
-  setInterval(refreshFissures, 40000); 
-});
+refresh();
+setInterval(refresh, 40000);
