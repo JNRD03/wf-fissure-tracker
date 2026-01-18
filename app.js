@@ -4,7 +4,6 @@ let allFissures = [];
 
 const tierOrder = ["Lith", "Meso", "Neo", "Axi", "Requiem", "Omnia"];
 
-/* -------------------- Helpers -------------------- */
 
 function formatTime(ms) {
   const totalSeconds = Math.floor(ms / 1000);
@@ -42,14 +41,11 @@ function getFactionIcon(enemy) {
   return "";
 }
 
-// API quirk fix
 function normalizeMissionType(type) {
   if (!type) return "";
   if (type.toLowerCase() === "corruption") return "Void Flood";
   return type;
 }
-
-/* -------------------- UI Builders -------------------- */
 
 function createMissionRow(f, listContainer, card) {
   const row = document.createElement("div");
@@ -117,8 +113,6 @@ function createCard(tier, fissures) {
   return card;
 }
 
-/* -------------------- Render -------------------- */
-
 function renderFissures(filter) {
   const root = document.getElementById("fissureList");
   root.innerHTML = "";
@@ -146,8 +140,6 @@ function renderFissures(filter) {
     }
   });
 }
-
-/* -------------------- Controls -------------------- */
 
 function setActive(id) {
   document.querySelectorAll(".toggle button").forEach(b =>
@@ -177,9 +169,10 @@ document.addEventListener("DOMContentLoaded", () => {
     .then(data => {
       allFissures = data
         .filter(f => new Date(f.expiry).getTime() > Date.now())
-        .filter(f => !f.isStorm); // remove Void Storms
+        .filter(f => !f.isStorm); //remove to include void storms
 
       renderFissures("all");
     })
     .catch(console.error);
 });
+
